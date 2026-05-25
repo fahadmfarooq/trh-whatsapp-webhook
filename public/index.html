@@ -521,8 +521,6 @@
     if (!text || !activePhone) return;
 
     btn.disabled = true;
-    input.value = '';
-    input.style.height = 'auto';
 
     try {
       const res = await fetch('/api/send', {
@@ -530,15 +528,28 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: activePhone, message: text })
       });
-      const data = await res.json();
+
+      let data;
+      try {
+        data = await res.json();
+      } catch(parseErr) {
+        showToast('Server returned invalid response', 'error');
+        btn.disabled = false;
+        return;
+      }
+
       if (data.success) {
+        input.value = '';
+        input.style.height = 'auto';
         showToast('Message sent ✓', 'success');
         await refreshMessages();
       } else {
-        showToast(data.error || 'Failed to send', 'error');
+        showToast('Error: ' + (data.error || 'Failed to send'), 'error');
+        console.error('Send error:', data);
       }
     } catch(e) {
-      showToast('Network error', 'error');
+      showToast('Network error: ' + e.message, 'error');
+      console.error('Fetch error:', e);
     } finally {
       btn.disabled = false;
     }
