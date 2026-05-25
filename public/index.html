@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>The Recovery House — WhatsApp Inbox</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2330;
+      --border: #2a3340;
+      --green: #25d366;
+      --green-dim: #1a9e4a;
+      --green-glow: rgba(37,211,102,0.12);
+      --text: #e6edf3;
+      --text-muted: #7d8590;
+      --text-dim: #4a5568;
+      --incoming: #1c2330;
+      --outgoing: #0d3320;
+      --outgoing-border: #25d36630;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-dot {
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+
+    .status-badge {
+      font-size: 11px;
+      color: var(--green);
+      background: var(--green-glow);
+      border: 1px solid #25d36630;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    /* ── LAYOUT ── */
+    .app {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 300px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+
+    .sidebar-header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .search-box {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-box:focus { border-color: var(--green-dim); }
+    .search-box::placeholder { color: var(--text-dim); }
+
+    .conversations-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .conversations-list::-webkit-scrollbar { width: 4px; }
+    .conversations-list::-webkit-scrollbar-track { background: transparent; }
+    .conversations-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .convo-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+      position: relative;
+    }
+
+    .convo-item:hover { background: var(--surface2); }
+    .convo-item.active { background: var(--green-glow); border-left: 2px solid var(--green); }
+
+    .convo-name {
+      font-weight: 500;
+      font-size: 14px;
+      margin-bottom: 3px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .convo-time {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .convo-preview {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
+
+    .unread-badge {
+      background: var(--green);
+      color: #000;
+      font-size: 10px;
+      font-weight: 700;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .empty-sidebar {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .empty-icon { font-size: 32px; margin-bottom: 12px; }
+
+    /* ── CHAT AREA ── */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--green-dim), #0d3320);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--green);
+      flex-shrink: 0;
+    }
+
+    .chat-contact-info { flex: 1; }
+    .chat-contact-name { font-weight: 600; font-size: 15px; }
+    .chat-contact-phone { font-size: 12px; color: var(--text-muted); }
+
+    .refresh-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .refresh-btn:hover { border-color: var(--green-dim); color: var(--green); }
+
+    .messages-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .messages-area::-webkit-scrollbar { width: 4px; }
+    .messages-area::-webkit-scrollbar-track { background: transparent; }
+    .messages-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .message-bubble {
+      max-width: 65%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      position: relative;
+    }
+
+    .message-bubble.incoming {
+      background: var(--incoming);
+      border: 1px solid var(--border);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    .message-bubble.outgoing {
+      background: var(--outgoing);
+      border: 1px solid var(--outgoing-border);
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message-meta {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 4px;
+      text-align: right;
+    }
+
+    .message-bubble.incoming .message-meta { text-align: left; }
+
+    /* ── INPUT AREA ── */
+    .input-area {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+
+    .message-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      resize: none;
+      min-height: 42px;
+      max-height: 120px;
+      transition: border-color 0.2s;
+      line-height: 1.5;
+    }
+
+    .message-input:focus { border-color: var(--green-dim); }
+    .message-input::placeholder { color: var(--text-dim); }
+
+    .send-btn {
+      background: var(--green);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      width: 42px; height: 42px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      font-size: 18px;
+    }
+
+    .send-btn:hover { background: #1fb857; transform: scale(1.05); }
+    .send-btn:disabled { background: var(--border); color: var(--text-dim); cursor: not-allowed; transform: none; }
+
+    /* ── EMPTY CHAT ── */
+    .empty-chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      gap: 12px;
+    }
+
+    .empty-chat-icon {
+      font-size: 56px;
+      opacity: 0.3;
+    }
+
+    .empty-chat h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-dim);
+    }
+
+    .empty-chat p { font-size: 13px; text-align: center; max-width: 280px; line-height: 1.6; }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: var(--green-dim); color: var(--green); }
+    .toast.error { border-color: #e05c5c50; color: #e05c5c; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    The Recovery House
+  </div>
+  <div class="status-badge">WhatsApp API Connected</div>
+</header>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Conversations</div>
+      <input class="search-box" type="text" placeholder="Search contacts..." id="searchInput" oninput="filterConversations()" />
+    </div>
+    <div class="conversations-list" id="conversationsList">
+      <div class="empty-sidebar">
+        <div class="empty-icon">💬</div>
+        <p>No conversations yet.<br/>Messages from customers will appear here.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT AREA -->
+  <div class="chat-area" id="chatArea">
+    <div class="empty-chat">
+      <div class="empty-chat-icon">📱</div>
+      <h3>Select a conversation</h3>
+      <p>Choose a contact from the left to view and reply to their messages.</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let allConversations = [];
+  let activePhone = null;
+  let pollInterval = null;
+
+  // ── LOAD CONVERSATIONS ──
+  async function loadConversations() {
+    try {
+      const res = await fetch('/api/conversations');
+      allConversations = await res.json();
+      renderConversationsList(allConversations);
+    } catch (e) {
+      console.error('Failed to load conversations', e);
+    }
+  }
+
+  function renderConversationsList(list) {
+    const el = document.getElementById('conversationsList');
+    if (!list.length) {
+      el.innerHTML = `<div class="empty-sidebar"><div class="empty-icon">💬</div><p>No conversations yet.<br/>Messages from customers will appear here.</p></div>`;
+      return;
+    }
+    el.innerHTML = list.map(c => `
+      <div class="convo-item ${c.phone === activePhone ? 'active' : ''}" onclick="openConversation('${c.phone}', '${escHtml(c.name)}')">
+        <div class="convo-name">
+          <span>${escHtml(c.name)}</span>
+          <span class="convo-time">${c.lastMessage ? formatTime(c.lastMessage.timestamp) : ''}</span>
+        </div>
+        <div class="convo-preview">${c.lastMessage ? escHtml(c.lastMessage.text) : 'No messages'}</div>
+        ${c.unread > 0 ? `<div class="unread-badge">${c.unread}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function filterConversations() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = allConversations.filter(c =>
+      c.name.toLowerCase().includes(q) || c.phone.includes(q)
+    );
+    renderConversationsList(filtered);
+  }
+
+  // ── OPEN CONVERSATION ──
+  async function openConversation(phone, name) {
+    activePhone = phone;
+    renderConversationsList(allConversations);
+
+    const chatArea = document.getElementById('chatArea');
+    chatArea.innerHTML = `
+      <div class="chat-header">
+        <div class="avatar">${name.charAt(0).toUpperCase()}</div>
+        <div class="chat-contact-info">
+          <div class="chat-contact-name">${escHtml(name)}</div>
+          <div class="chat-contact-phone">+${phone}</div>
+        </div>
+        <button class="refresh-btn" onclick="refreshMessages()">↻ Refresh</button>
+      </div>
+      <div class="messages-area" id="messagesArea"></div>
+      <div class="input-area">
+        <textarea class="message-input" id="messageInput" placeholder="Type a message..." rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+      </div>
+    `;
+
+    await refreshMessages();
+
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(refreshMessages, 5000);
+  }
+
+  async function refreshMessages() {
+    if (!activePhone) return;
+    try {
+      const res = await fetch(`/api/conversations/${activePhone}`);
+      const data = await res.json();
+      const area = document.getElementById('messagesArea');
+      if (!area) return;
+
+      area.innerHTML = data.messages.map(m => `
+        <div class="message-bubble ${m.direction}">
+          ${escHtml(m.text)}
+          <div class="message-meta">${formatTime(m.timestamp)}</div>
+        </div>
+      `).join('');
+
+      area.scrollTop = area.scrollHeight;
+      await loadConversations();
+    } catch(e) {}
+  }
+
+  // ── SEND MESSAGE ──
+  async function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const btn = document.getElementById('sendBtn');
+    const text = input.value.trim();
+    if (!text || !activePhone) return;
+
+    btn.disabled = true;
+    input.value = '';
+    input.style.height = 'auto';
+
+    try {
+      const res = await fetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: activePhone, message: text })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Message sent ✓', 'success');
+        await refreshMessages();
+      } else {
+        showToast(data.error || 'Failed to send', 'error');
+      }
+    } catch(e) {
+      showToast('Network error', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  // ── HELPERS ──
+  function formatTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast show ${type}`;
+    setTimeout(() => t.className = 'toast', 3000);
+  }
+
+  // ── INIT ──
+  loadConversations();
+  setInterval(loadConversations, 8000);
+</script>
+</body>
+</html>

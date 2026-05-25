@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: trh-whatsapp-webhook
+    env: node
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: VERIFY_TOKEN
+        value: colptwebhook
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: PHONE_NUMBER_ID
+        sync: false
