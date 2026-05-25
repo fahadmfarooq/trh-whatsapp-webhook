@@ -105,13 +105,26 @@ app.get("/api/conversations/:phone", (req, res) => {
 app.post("/api/send", async (req, res) => {
   const { to, message } = req.body;
 
+  console.log(`📤 Send request → to: ${to}, message: ${message}`);
+  console.log(`🔑 Token present: ${!!WHATSAPP_TOKEN}, Phone ID: ${PHONE_NUMBER_ID}`);
+
   if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
+    console.log("❌ Missing WHATSAPP_TOKEN or PHONE_NUMBER_ID");
     return res
       .status(500)
       .json({ error: "WHATSAPP_TOKEN or PHONE_NUMBER_ID not configured" });
   }
 
   try {
+    const payload = {
+      messaging_product: "whatsapp",
+      to,
+      type: "text",
+      text: { body: message },
+    };
+
+    console.log(`📡 Calling Meta API with Phone Number ID: ${PHONE_NUMBER_ID}`);
+
     const response = await fetch(
       `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
       {
@@ -120,19 +133,14 @@ app.post("/api/send", async (req, res) => {
           Authorization: `Bearer ${WHATSAPP_TOKEN}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to,
-          type: "text",
-          text: { body: message },
-        }),
+        body: JSON.stringify(payload),
       }
     );
 
     const data = await response.json();
+    console.log(`📬 Meta API response:`, JSON.stringify(data));
 
     if (data.messages) {
-      // Save to local conversation store
       if (!conversations[to]) {
         conversations[to] = { name: to, messages: [] };
       }
@@ -145,9 +153,11 @@ app.post("/api/send", async (req, res) => {
       });
       res.json({ success: true, id: data.messages[0].id });
     } else {
+      console.log("❌ Send failed:", data.error);
       res.status(400).json({ error: data.error?.message || "Send failed" });
     }
   } catch (err) {
+    console.log("❌ Exception during send:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
