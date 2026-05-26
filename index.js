@@ -40,8 +40,29 @@ app.post("/webhook", (req, res) => {
           value.messages.forEach((msg) => {
             const from = msg.from;
             const name = value.contacts?.[0]?.profile?.name || from;
-            const text =
-              msg.type === "text" ? msg.text.body : `[${msg.type} message]`;
+            let text;
+            if (msg.type === "text") {
+              text = msg.text.body;
+            } else if (msg.type === "button") {
+              // Quick reply button tap — show the actual button text
+              text = msg.button?.text || "[button]";
+            } else if (msg.type === "interactive") {
+              // List reply or button reply
+              const ir = msg.interactive;
+              if (ir?.type === "button_reply") text = ir.button_reply?.title || "[button reply]";
+              else if (ir?.type === "list_reply") text = ir.list_reply?.title || "[list reply]";
+              else text = "[interactive message]";
+            } else if (msg.type === "image") {
+              text = "📷 Image";
+            } else if (msg.type === "audio") {
+              text = "🎵 Voice message";
+            } else if (msg.type === "document") {
+              text = "📄 Document";
+            } else if (msg.type === "location") {
+              text = "📍 Location";
+            } else {
+              text = `[${msg.type}]`;
+            }
             const timestamp = new Date(parseInt(msg.timestamp) * 1000);
 
             if (!conversations[from]) {
@@ -99,6 +120,39 @@ app.get("/api/conversations/:phone", (req, res) => {
   // Mark as read
   convo.messages.forEach((m) => (m.read = true));
   res.json(convo);
+});
+
+// ─── FETCH APPROVED TEMPLATES FROM META ───
+app.get("/api/templates", async (req, res) => {
+  const WABA_ID = process.env.WABA_ID || "";
+
+  if (!WHATSAPP_TOKEN || !WABA_ID) {
+    return res.status(500).json({ error: "WHATSAPP_TOKEN or WABA_ID not configured" });
+  }
+
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v19.0/${WABA_ID}/message_templates?status=APPROVED&limit=20`,
+      {
+        headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` }
+      }
+    );
+    const data = await response.json();
+
+    if (data.data) {
+      const templates = data.data.map(t => ({
+        name: t.name,
+        language: t.language,
+        category: t.category,
+        status: t.status,
+      }));
+      res.json({ templates });
+    } else {
+      res.status(400).json({ error: data.error?.message || "Failed to fetch templates" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── SEND A TEMPLATE MESSAGE (to initiate conversation) ───
