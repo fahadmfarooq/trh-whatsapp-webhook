@@ -566,20 +566,19 @@ Are you or someone you know seeking support, or would you like to learn about ou
       </div>
     </div>
 
-    <!-- CUSTOM TAB -->
+    <!-- CUSTOM TAB — fetches approved templates automatically -->
     <div id="panel-custom" style="display:none">
-      <div class="modal-note">Use this after Meta approves your template. Enter the exact template name from WhatsApp Manager.</div>
+      <div class="modal-note">Your approved templates are fetched automatically from Meta. Select one and enter the customer number.</div>
       <div class="form-group">
         <div class="form-label">Customer's WhatsApp Number</div>
         <input class="form-input" type="tel" id="customPhone" placeholder="923001234567" />
       </div>
       <div class="form-group">
-        <div class="form-label">Template Name (exact)</div>
-        <input class="form-input" type="text" id="customTemplateName" placeholder="e.g. trh_introduction" />
-      </div>
-      <div class="form-group">
-        <div class="form-label">Language Code</div>
-        <input class="form-input" type="text" id="customLang" placeholder="en" value="en" />
+        <div class="form-label">Select Template</div>
+        <select class="form-input" id="customTemplateName" style="cursor:pointer">
+          <option value="">Loading templates...</option>
+        </select>
+        <div class="form-hint" id="templateHint">Templates are fetched from your WhatsApp Manager</div>
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -603,6 +602,33 @@ Are you or someone you know seeking support, or would you like to learn about ou
       document.getElementById('tab-'+t).className = 'tab' + (t===tab?' active':'');
       document.getElementById('panel-'+t).style.display = t===tab ? '' : 'none';
     });
+    if (tab === 'custom') loadTemplates();
+  }
+
+  // ── FETCH APPROVED TEMPLATES ──
+  async function loadTemplates() {
+    const select = document.getElementById('customTemplateName');
+    const hint = document.getElementById('templateHint');
+    select.innerHTML = '<option value="">Fetching templates...</option>';
+    try {
+      const res = await fetch('/api/templates');
+      const data = await res.json();
+      if (data.templates && data.templates.length > 0) {
+        select.innerHTML = data.templates.map(t =>
+          `<option value="${t.name}" data-lang="${t.language}">${t.name} (${t.language}) — ${t.category}</option>`
+        ).join('');
+        hint.textContent = `${data.templates.length} approved template(s) loaded`;
+      } else if (data.error) {
+        select.innerHTML = '<option value="">Could not load — check WABA_ID in Render</option>';
+        hint.textContent = 'Error: ' + data.error;
+      } else {
+        select.innerHTML = '<option value="">No approved templates found</option>';
+        hint.textContent = 'Submit and get a template approved in WhatsApp Manager first';
+      }
+    } catch(e) {
+      select.innerHTML = '<option value="">Network error</option>';
+      hint.textContent = e.message;
+    }
   }
 
   // ── MODAL ──
@@ -767,8 +793,9 @@ Are you or someone you know seeking support, or would you like to learn about ou
   // ── SEND CUSTOM TEMPLATE ──
   async function sendCustomTemplate() {
     const phone = document.getElementById('customPhone').value.trim().replace(/\D/g,'');
-    const templateName = document.getElementById('customTemplateName').value.trim();
-    const lang = document.getElementById('customLang').value.trim() || 'en';
+    const select = document.getElementById('customTemplateName');
+    const templateName = select.value;
+    const lang = select.selectedOptions[0]?.dataset?.lang || 'en';
     if (!phone || !templateName) { showToast('Fill all fields', 'error'); return; }
     const btn = document.getElementById('sendCustomBtn');
     btn.disabled = true; btn.textContent = 'Sending...';
