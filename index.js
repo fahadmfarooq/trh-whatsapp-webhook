@@ -101,6 +101,66 @@ app.get("/api/conversations/:phone", (req, res) => {
   res.json(convo);
 });
 
+// ─── SEND A TEMPLATE MESSAGE (to initiate conversation) ───
+app.post("/api/send-template", async (req, res) => {
+  const { to, template_name, language_code } = req.body;
+
+  console.log(`📤 Template send request → to: ${to}, template: ${template_name}`);
+
+  if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
+    return res.status(500).json({ error: "WHATSAPP_TOKEN or PHONE_NUMBER_ID not configured" });
+  }
+
+  try {
+    const payload = {
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name: template_name,
+        language: { code: language_code || "en" }
+      }
+    };
+
+    console.log(`📡 Sending template via Meta API...`);
+
+    const response = await fetch(
+      `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data = await response.json();
+    console.log(`📬 Meta API response:`, JSON.stringify(data));
+
+    if (data.messages) {
+      if (!conversations[to]) {
+        conversations[to] = { name: to, messages: [] };
+      }
+      conversations[to].messages.push({
+        id: data.messages[0].id,
+        direction: "outgoing",
+        text: `[Template: ${template_name}]`,
+        timestamp: new Date(),
+        read: true,
+      });
+      res.json({ success: true, id: data.messages[0].id });
+    } else {
+      console.log("❌ Template send failed:", data.error);
+      res.status(400).json({ error: data.error?.message || "Template send failed" });
+    }
+  } catch (err) {
+    console.log("❌ Exception during template send:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── SEND A MESSAGE ───
 app.post("/api/send", async (req, res) => {
   const { to, message } = req.body;
