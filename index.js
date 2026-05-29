@@ -21,12 +21,17 @@ async function connectDB() {
     return;
   }
   try {
-    const client = new MongoClient(MONGODB_URI);
+    const client = new MongoClient(MONGODB_URI, {
+      tls: true,
+      tlsAllowInvalidCertificates: false,
+      serverSelectionTimeoutMS: 10000,
+    });
     await client.connect();
     db = client.db("trh_whatsapp");
     console.log("✅ MongoDB connected");
   } catch (err) {
     console.error("❌ MongoDB connection failed:", err.message);
+    console.log("⚠️  Falling back to in-memory store");
   }
 }
 
