@@ -10,14 +10,12 @@ app.use(express.urlencoded({ extended: true }));
 const VERIFY_TOKEN    = process.env.VERIFY_TOKEN    || "colptwebhook";
 const WHATSAPP_TOKEN  = process.env.WHATSAPP_TOKEN  || "";
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || "";
-const MONGODB_URI     = process.env.MONGODB_URI     || "";
 
 // ─── UPSTASH REDIS SETUP ───
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
-
 console.log("✅ Upstash Redis connected");
 
 async function getConversation(phone) {
@@ -84,7 +82,7 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// ─── ROUTES: public pages ───
+// ─── PUBLIC PAGES ───
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
 app.get("/app", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/trh-logo.png", (req, res) => res.sendFile(path.join(__dirname, "public", "trh-logo.png")));
@@ -150,7 +148,6 @@ app.post("/webhook", async (req, res) => {
             else if (msg.type === "document") text = "📄 Document";
             else if (msg.type === "location") text = "📍 Location";
             else text = `[${msg.type}]`;
-
             const timestamp = new Date(parseInt(msg.timestamp) * 1000);
             await pushMessage(from, name, { id: msg.id, direction: "incoming", text, timestamp });
             console.log(`📩 ${name} (${from}): ${text}`);
@@ -182,7 +179,6 @@ app.get("/api/conversations", requireAuth, async (req, res) => {
 app.get("/api/conversations/:phone", requireAuth, async (req, res) => {
   const convo = await getConversation(req.params.phone);
   if (!convo) return res.json({ name: req.params.phone, messages: [] });
-  // Mark as read
   convo.messages.forEach(m => m.read = true);
   await saveConversation(req.params.phone, convo);
   res.json(convo);
@@ -232,7 +228,6 @@ app.post("/api/send-template", requireAuth, async (req, res) => {
     const data = await r.json();
     console.log(`📬 Meta:`, JSON.stringify(data));
     if (data.messages) {
-      // Store actual message text (with variables filled in) instead of template name
       const displayText = preview_text || `[Template: ${template_name}]`;
       await pushMessage(to, to, {
         id: data.messages[0].id, direction: "outgoing",
